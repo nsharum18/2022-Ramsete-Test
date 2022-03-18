@@ -4,14 +4,18 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix.motorcontrol.InvertType;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.TalonFXInvertType;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 
@@ -19,8 +23,8 @@ public class DriveSubsystem extends SubsystemBase {
 
   private final WPI_TalonFX LMaster = new WPI_TalonFX(Constants.LEFT_DRIVE_MASTER);
   private final WPI_TalonFX LFollower = new WPI_TalonFX(Constants.LEFT_DRIVE_FOLLOWER);
-  private final WPI_TalonFX RMaster = new WPI_TalonFX(Constants.LEFT_DRIVE_MASTER);
-  private final WPI_TalonFX RFollower = new WPI_TalonFX(Constants.LEFT_DRIVE_MASTER);
+  private final WPI_TalonFX RMaster = new WPI_TalonFX(Constants.RIGHT_DRIVE_MASTER);
+  private final WPI_TalonFX RFollower = new WPI_TalonFX(Constants.RIGHT_DRIVE_FOLLOWER);
 
   private final DifferentialDrive m_drive = new DifferentialDrive(LMaster, RMaster);
 
@@ -36,17 +40,17 @@ public class DriveSubsystem extends SubsystemBase {
   public DriveSubsystem() {
 
     LFollower.follow(LMaster);
-    LFollower.setInverted(true);
+    LFollower.setInverted(InvertType.FollowMaster);
     RFollower.follow(RMaster);
-    RFollower.setInverted(false);
+    RFollower.setInverted(InvertType.FollowMaster);
 
     LMaster.setNeutralMode(NeutralMode.Brake);
     LFollower.setNeutralMode(NeutralMode.Brake);
     RMaster.setNeutralMode(NeutralMode.Brake);
     RFollower.setNeutralMode(NeutralMode.Brake);
 
-    LMaster.setInverted(true);
-    RMaster.setInverted(false);
+    LMaster.setInverted(TalonFXInvertType.Clockwise);
+    RMaster.setInverted(TalonFXInvertType.CounterClockwise);
 
     LMaster.configOpenloopRamp(Constants.RAMP_TIME);
     RMaster.configOpenloopRamp(Constants.RAMP_TIME);
@@ -60,7 +64,16 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // This method will be called once per scheduler run
 
-  m_odometry.update(m_navx.getRotation2d(), getLMasterEncoder(), getRMasterEncoder());
+  m_odometry.update(m_navx.getRotation2d(), 
+    nativeUnitsToDistanceMeters(getLMasterEncoder()), 
+    nativeUnitsToDistanceMeters(getRMasterEncoder()));
+
+    SmartDashboard.putNumber("LEncoder", getLMasterEncoder());
+    SmartDashboard.putNumber("REncoder", getRMasterEncoder());
+    SmartDashboard.putNumber("Heading", getHeading());
+    SmartDashboard.putNumber("LeftVolts", LMaster.getMotorOutputVoltage());
+    SmartDashboard.putNumber("RightVolts", RMaster.getMotorOutputVoltage());
+
 
   }
 
@@ -72,11 +85,10 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public DifferentialDriveWheelSpeeds getWheelSpeeds() {
+    double left_meters_sec = 10 * nativeUnitsToDistanceMeters(getLMasterRate());
+    double right_meters_sec = 10 * nativeUnitsToDistanceMeters(getRMasterRate());
 
-    return new DifferentialDriveWheelSpeeds(
-      getLMasterRate() * Constants.gearRatio * 10 / Constants.EncoderCPR * Constants.wheelcircumference,
-      getRMasterRate() * Constants.gearRatio * 10 / Constants.EncoderCPR * Constants.wheelcircumference
-      );
+    return new DifferentialDriveWheelSpeeds(left_meters_sec, right_meters_sec);
 
   }
 
@@ -94,29 +106,27 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void tankDriveVolts(double leftVolts, double rightVolts) {
-
     LMaster.setVoltage(leftVolts);
     RMaster.setVoltage(rightVolts);
     m_drive.feed();
-
   }
 
   public void resetEncoders() {
 
-    LMaster.setSelectedSensorPosition(0);
-    RMaster.setSelectedSensorPosition(0);
+    LMaster.setSelectedSensorPosition(0, 0, 0);
+    RMaster.setSelectedSensorPosition(0, 0, 0);
 
   }
 
   public double getLMasterEncoder() {
 
-    return LMaster.getSelectedSensorPosition() / Constants.EncoderCPR * Constants.gearRatio * Constants.wheelcircumference;
+    return LMaster.getSelectedSensorPosition();
     
   }
 
   public double getRMasterEncoder() {
 
-    return RMaster.getSelectedSensorPosition() / Constants.EncoderCPR * Constants.gearRatio * Constants.wheelcircumference;
+    return RMaster.getSelectedSensorPosition();
 
   }
 
@@ -140,7 +150,7 @@ public class DriveSubsystem extends SubsystemBase {
 
   public double getHeading() {
 
-    return m_navx.getRotation2d().getDegrees();
+    return Math.IEEEremainder(m_navx.getAngle(), 360) * (Constants.kGyroReversed ? -1.0 : 1.0);
 
   }
 
@@ -149,6 +159,18 @@ public class DriveSubsystem extends SubsystemBase {
     return -m_navx.getRate();
     
   }
+
+
+  private double nativeUnitsToDistanceMeters(double sensorCounts){
+    double motorRotations = (double)sensorCounts / Constants.EncoderCPR;
+    double wheelRotations = motorRotations / Constants.gearRatio;
+    double positionMeters = wheelRotations * (2 * Math.PI * Units.inchesToMeters(Constants.wheelradius));
+    return positionMeters;
+
+
+  }
+
+
 
   @Override
   public void simulationPeriodic() {
