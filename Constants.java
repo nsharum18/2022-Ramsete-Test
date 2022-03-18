@@ -31,12 +31,13 @@ public static final double ks = .72;
 public static final double kv = 1.36;
 public static final double ka = .49;
 
-public static final double kp = 21.11;
+public static final double kp = 21.113;
 
 public static final double gearRatio = 1/6;
 
 public static final double wheeldistance = .6858;
 public static final double wheeldiameter = .1524;
+public static final double wheelradius = 3;
 public static final double wheelcircumference = wheeldiameter * Math.PI;
 
 public static final double EncoderCPR = 2048;
@@ -49,5 +50,7 @@ public static final double kMaxAccelerationMetersPerSecondSquared = 3;
 
 public static final double kRamseteB = 2;
 public static final double kRamseteZeta = 0.7;
+
+public static final boolean kGyroReversed = true;
 
 }
