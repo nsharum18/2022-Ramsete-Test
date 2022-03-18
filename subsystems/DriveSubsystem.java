@@ -71,8 +71,6 @@ public class DriveSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("LEncoder", getLMasterEncoder());
     SmartDashboard.putNumber("REncoder", getRMasterEncoder());
     SmartDashboard.putNumber("Heading", getHeading());
-    SmartDashboard.putNumber("LeftVolts", LMaster.getMotorOutputVoltage());
-    SmartDashboard.putNumber("RightVolts", RMaster.getMotorOutputVoltage());
 
 
   }
@@ -108,6 +106,8 @@ public class DriveSubsystem extends SubsystemBase {
   public void tankDriveVolts(double leftVolts, double rightVolts) {
     LMaster.setVoltage(leftVolts);
     RMaster.setVoltage(rightVolts);
+    SmartDashboard.putNumber("LeftVolts",leftVolts);
+    SmartDashboard.putNumber("RightVolts", rightVolts);
     m_drive.feed();
   }
 
