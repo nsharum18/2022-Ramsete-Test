@@ -16,6 +16,7 @@ import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.math.trajectory.constraint.DifferentialDriveVoltageConstraint;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.subsystems.*;
@@ -85,29 +86,48 @@ public class RobotContainer {
 
       List.of(
       
-      new Translation2d(1,0), 
-      
-      new Translation2d(2, 0)),
+      new Translation2d(1,0)),       
 
-      new Pose2d(3, 0, new Rotation2d(0)),
+      new Pose2d(3, 1, new Rotation2d(0)),
 
       config);
 
+    RamseteController m_disabledRamsete = new RamseteController();
+    m_disabledRamsete.setEnabled(false);
+
+    var table = NetworkTableInstance.getDefault().getTable("troubleshooting");
+    var leftReference = table.getEntry("left_reference");
+    var leftMeasurement = table.getEntry("left_measurement");
+    var rightReference = table.getEntry("right_reference");
+    var rightMeasurement = table.getEntry("right_measurement");
+
+    var leftController = new PIDController(Constants.kp, 0, 0);
+    var rightController = new PIDController(Constants.kp, 0, 0);
 
     RamseteCommand ramseteCommand =
       new RamseteCommand(
         testTrajectory,
         m_drive::getPose,
-        new RamseteController(Constants.kRamseteB, Constants.kRamseteZeta),
+        m_disabledRamsete,
+      //  new RamseteController(Constants.kRamseteB, Constants.kRamseteZeta),
         new SimpleMotorFeedforward(
           Constants.ks,
           Constants.kv,
           Constants.ka),
           Constants.kDriveKinematics,
           m_drive::getWheelSpeeds,
-          new PIDController(Constants.kp, 0, 0),
-          new PIDController(Constants.kp, 0, 0),
-          m_drive::tankDriveVolts,
+          leftController,
+          rightController,
+          (leftVolts, rightVolts) -> {
+            m_drive.tankDriveVolts(leftVolts, rightVolts);
+
+            leftMeasurement.setNumber(m_drive.getWheelSpeeds().leftMetersPerSecond);
+            leftReference.setNumber(leftController.getSetpoint());
+
+            rightMeasurement.setNumber(m_drive.getWheelSpeeds().rightMetersPerSecond);
+            rightReference.setNumber(rightController.getSetpoint());
+          },
+          
           m_drive);
 
 
