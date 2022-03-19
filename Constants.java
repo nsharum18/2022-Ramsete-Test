@@ -27,13 +27,13 @@ public static final double TURN_SPEED = .5;
 public static final double RAMP_TIME = .5;
 
 //trajectory constants
-public static final double ks = .72;
-public static final double kv = 1.36;
-public static final double ka = .49;
+public static final double ks = .722;
+public static final double kv = 1.52;
+public static final double ka = .625;
 
-public static final double kp = 21.113;
+public static final double kp = 0;//2.3983
 
-public static final double gearRatio = 1/6;
+public static final double gearRatio = 1/6.86;
 
 public static final double wheeldistance = .6858;
 public static final double wheeldiameter = .1524;
